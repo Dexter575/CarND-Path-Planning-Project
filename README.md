@@ -1,6 +1,6 @@
 # CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
-   
+
 ### Simulator.
 You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases/tag/T3_v1.2).  
 
@@ -43,13 +43,13 @@ Here is the data provided from the Simulator to the C++ Program
 #### Previous path data given to the Planner
 
 //Note: Return the previous list but with processed points removed, can be a nice tool to show how far along
-the path has processed since last time. 
+the path has processed since last time.
 
 ["previous_path_x"] The previous list of x points previously given to the simulator
 
 ["previous_path_y"] The previous list of y points previously given to the simulator
 
-#### Previous path's end s and d values 
+#### Previous path's end s and d values
 
 ["end_path_s"] The previous list's last point's frenet s value
 
@@ -57,7 +57,7 @@ the path has processed since last time.
 
 #### Sensor Fusion Data, a list of all other car's attributes on the same side of the road. (No Noise)
 
-["sensor_fusion"] A 2d vector of cars and then that car's [car's unique ID, car's x position in map coordinates, car's y position in map coordinates, car's x velocity in m/s, car's y velocity in m/s, car's s position in frenet coordinates, car's d position in frenet coordinates. 
+["sensor_fusion"] A 2d vector of cars and then that car's [car's unique ID, car's x position in map coordinates, car's y position in map coordinates, car's x velocity in m/s, car's y velocity in m/s, car's s position in frenet coordinates, car's d position in frenet coordinates.
 
 ## Details
 
@@ -87,59 +87,59 @@ A really helpful resource for doing this project and creating smooth trajectorie
   * Run either `install-mac.sh` or `install-ubuntu.sh`.
   * If you install from source, checkout to commit `e94b6e1`, i.e.
     ```
-    git clone https://github.com/uWebSockets/uWebSockets 
+    git clone https://github.com/uWebSockets/uWebSockets
     cd uWebSockets
     git checkout e94b6e1
     ```
 
-## Editor Settings
 
-We've purposefully kept editor configuration files out of this repo in order to
-keep it as simple and environment agnostic as possible. However, we recommend
-using the following settings:
+## Project Reflection
 
-* indent using spaces
-* set tab width to 2 spaces (keeps the matrices in source code aligned)
+* Overview
+  * Perception : The sensor_fusion matrix is used to detect the surrunding objects.
 
-## Code Style
+  * localization : The highway_map.csv file is provided in both XY coordinate and s,d Fernet coordinate.
 
-Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
+  * Predictions : The surrunding vehicle trajectory is predicted based on the information provided by the sensor_fusion.
 
-## Project Instructions and Rubric
+  * Behaviour planner : A list of decision is generated for the vehicle to follow based on a FSM.
 
-Note: regardless of the changes you make, your project must be buildable using
-cmake and make!
+  * Trajectory Generation : the trajectories are generated for all potential behavior decisions, and a finalized trajectory is selected based on a cost function.
 
+* Code Details
+  * In main.cpp line(18 - 104), the map data is generated, and vehicle information is initialized. The localization and sensor fusion data is ready to use.
+  * In main.cpp line 111, the localization information is pushed into the Vehicle object and updated for every single loop.
+  * In main.cpp line 112, the sensor fusion information is pushed into the Vehicle object to serve the prediction function:
+    * In vehicle.cpp line 42, the 'choose_next_state()' function is called to generate potential states can select the optimazed solution:
+      * Line 43, function 'successor_states()' will lay out he possible states based on the FSM showing below:
+        <p align="center">
+             <img src="./FSM.PNG" alt="FSM" width="50%" height="50%">
+             <br>FSM.PNG
+        </p>
+      * Line 44, function 'check_collision_targets()' is used to predict the possible motions of surrunding objects:
+        * Line (119 - 188) will update the struct 'collider' 's distance and speed (where collider is a list of nearby objects).
+      * Line 56, function 'find_best_state()' will utilize the sensor data and potential list of states to judge for the best solution:
+        * Line 222, the 'Cost' object is created to store the information of cost functions:
+          * In cost.cpp, the cost are considered with 4 different aspects:
+            * The danger of the incoming movement, enough space as buffer? will it cause a collision?
+            * The distance towards the final goal location.
+            * The efficiency of the incoming movement, is the vehicle moving into a faster/slower lane?
+            * The comfort of the passenger, is the vehicle changing line too frequent?
+      * Line 60, function 'realize_next_state()' will update the finalized decision: intended lane and final lane.
+      * Line (88 - 94), is controlling the speed of the vehicle based on the closest potential collider.
+  * In main.cpp line(117-118), the current decision is updated: lane change and speed change.
+  * Line (120 - 233) the path generation logistic is presented:
+      * A target at 30 meter away is set in s coordinate.
+      * Convert target to XY coordinate and create a spline with those points
+      * NOTE a spline method is used here because:
+        * The continuity is ensured (N points is created between the start and end based on the 20ms sampling frequency).
+        * It has a smaller error since it only require a 1st and 2nd order derivative in XY coordinate.
+        * Simple to use, plug in and play will the spline.h lib.
+      * The reason not to use JMT algorithm in this particular project is because:
+        * The JMT algorithm involves a 3rd order derivative (acceleration) for the quintic polynomial IN S COORDINATE, which will create much higher uncertainty since the map given has a 30 meter resolution in XY coordinate, and its even worse if covert into s coordinate.  
 
-## Call for IDE Profiles Pull Requests
-
-Help your fellow students!
-
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to ensure
-that students don't feel pressured to use one IDE or another.
-
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
-
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
-
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
-
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
-
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
-
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
-
+  A proof of criteria satisfication is showing below:
+          <p align="center">
+             <img src="./proofofsuc.PNG" alt="DEMO" width="50%" height="50%">
+             <br>proofofsuc.PNG
+        </p>
